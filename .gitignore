@@ -1,0 +1,32 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment variables (API keys)
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+
+# Model files (optional - agar repo heavy na karna ho)
+*.pkl
+*.h5
+*.joblib
+
+# Node modules (agar frontend add karega future me)
+node_modules/
