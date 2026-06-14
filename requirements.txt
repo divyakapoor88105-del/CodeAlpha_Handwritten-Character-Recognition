@@ -1,0 +1,8 @@
+# For training
+torch
+torchvision
+
+# For the web app
+flask
+pillow
+numpy

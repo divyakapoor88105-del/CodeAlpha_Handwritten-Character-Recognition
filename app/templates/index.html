@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inkwell — Handwriting Recognizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #f4f1ea;
+        --paper: #fffdf8;
+        --ink: #1a2744;
+        --accent: #c0392b;
+        --pencil: #8a93a6;
+        --line: #ddd6c4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+    .page {
+        max-width: 480px;
+        width: 100%;
+    }
+    .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+    .pencil-icon {
+        font-size: 1.8rem;
+        transform: rotate(-15deg);
+        display: inline-block;
+    }
+    h1 {
+        font-family: 'Caveat', cursive;
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--ink);
+        line-height: 1;
+    }
+    .tagline {
+        font-size: 0.95rem;
+        color: var(--pencil);
+        margin-bottom: 24px;
+        line-height: 1.4;
+    }
+    .sheet {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 28px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .canvas-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--pencil);
+        margin-bottom: 12px;
+    }
+    .canvas-wrap {
+        position: relative;
+        border: 2px solid var(--ink);
+        border-radius: 4px;
+        background:
+            repeating-linear-gradient(0deg, transparent, transparent 27px, var(--line) 28px),
+            var(--paper);
+        margin-bottom: 18px;
+    }
+    canvas {
+        display: block;
+        width: 100%;
+        touch-action: none;
+        cursor: crosshair;
+        border-radius: 4px;
+    }
+    .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+    button {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 12px 18px;
+        border: 1.5px solid var(--ink);
+        background: transparent;
+        color: var(--ink);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    button:hover { background: var(--ink); color: var(--paper); }
+    button.primary {
+        background: var(--ink);
+        color: var(--paper);
+        flex: 1;
+    }
+    button.primary:hover { background: var(--accent); border-color: var(--accent); }
+
+    .result {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+    }
+    .result-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--pencil);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 10px;
+    }
+    .main-guess {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+    .main-guess .char {
+        font-size: 3.2rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--accent);
+        min-width: 56px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .main-guess .conf {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--pencil);
+    }
+    .alternates {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .alt-chip {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 5px 10px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        color: var(--ink);
+        background: var(--bg);
+    }
+    .alt-chip .pct { color: var(--pencil); font-size: 0.7rem; }
+    .placeholder {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--pencil);
+        font-style: italic;
+    }
+    .footer-note {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--pencil);
+        text-align: center;
+        margin-top: 18px;
+        letter-spacing: 0.04em;
+    }
+</style>
+</head>
+<body>
+<div class="page">
+    <div class="header">
+        <span class="pencil-icon">✏️</span>
+        <h1>Inkwell</h1>
+    </div>
+    <div class="tagline">A small machine that reads handwriting — digits, capitals, and lowercase letters.</div>
+
+    <div class="sheet">
+        <div class="canvas-label">Draw here</div>
+        <div class="canvas-wrap">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="clearBtn">Clear</button>
+            <button id="predictBtn" class="primary">Recognize</button>
+        </div>
+
+        <div class="result">
+            <div class="result-label">Best guesses</div>
+            <div id="output">
+                <span class="placeholder">Nothing graded yet. Draw a character and press Recognize.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">Model: 62-class CNN trained on EMNIST (digits 0-9, A-Z, a-z) · Served locally via Flask</div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+// Handles high-DPI / mobile screens correctly so drawings aren't
+// shrunk or misaligned when converted to the 28x28 model input.
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.width * dpr; // square canvas
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any previous scaling
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#fffdf8';
+    ctx.fillRect(0, 0, rect.width, rect.width);
+
+    ctx.lineWidth = rect.width * 0.07;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1a2744';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Returns coordinates in CSS pixels (matches the ctx.scale(dpr, dpr) above)
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return [
+        clientX - rect.left,
+        clientY - rect.top
+    ];
+}
+
+function start(e) {
+    drawing = true;
+    [lastX, lastY] = getPos(e);
+    e.preventDefault();
+}
+function move(e) {
+    if (!drawing) return;
+    const [x, y] = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    [lastX, lastY] = [x, y];
+    e.preventDefault();
+}
+function end() { drawing = false; }
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+canvas.addEventListener('mouseup', end);
+canvas.addEventListener('mouseleave', end);
+canvas.addEventListener('touchstart', start, {passive: false});
+canvas.addEventListener('touchmove', move, {passive: false});
+canvas.addEventListener('touchend', end);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+    const rect = canvas.getBoundingClientRect();
+    ctx.fillStyle = '#fffdf8';
+    ctx.fillRect(0, 0, rect.width, rect.width);
+    document.getElementById('output').innerHTML =
+        '<span class="placeholder">Nothing graded yet. Draw a character and press Recognize.</span>';
+});
+
+document.getElementById('predictBtn').addEventListener('click', async () => {
+    const output = document.getElementById('output');
+    output.innerHTML = '<span class="placeholder">Reading your handwriting...</span>';
+
+    const dataURL = canvas.toDataURL('image/png');
+
+    try {
+        const res = await fetch('/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image: dataURL})
+        });
+        const data = await res.json();
+        const preds = data.predictions;
+
+        const top = preds[0];
+        let html = `
+            <div class="main-guess">
+                <div class="char">${escapeHtml(top.char)}</div>
+                <div class="conf">${top.confidence}% confident</div>
+            </div>
+            <div class="alternates">`;
+
+        for (let i = 1; i < preds.length; i++) {
+            html += `<div class="alt-chip">${escapeHtml(preds[i].char)} <span class="pct">${preds[i].confidence}%</span></div>`;
+        }
+        html += `</div>`;
+        output.innerHTML = html;
+    } catch (err) {
+        output.innerHTML = '<span class="placeholder">Something went wrong. Is the server running?</span>';
+    }
+});
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>
